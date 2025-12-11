@@ -244,25 +244,11 @@ jobs:
               -var="ami_type=${{ matrix.arrays.ami }}" \
               -var="instance_type=${{ matrix.arrays.instanceType }}" \
               -var="k8s_version=${{ matrix.arrays.k8sVersion }}"; then
-              terraform destroy -auto-approve
+              echo "Terraform apply passed"
             else
-              terraform destroy -auto-approve && exit 1
+              echo "Terraform apply failed. Cluster left running for investigation."
+              exit 1
             fi
-
-      - name: Terraform destroy
-        if: ${{ cancelled() || failure() }}
-        uses: nick-fields/retry@v2
-        with:
-          max_attempts: 1
-          timeout_minutes: 8
-          retry_wait_seconds: 5
-          command: |
-            if [ "${{ matrix.arrays.terraform_dir }}" != "" ]; then
-              cd "${{ matrix.arrays.terraform_dir }}"
-            else
-              cd terraform/eks/daemon
-            fi
-            terraform destroy --auto-approve
 
   GPUEndToEndTest:
     name:  ${{matrix.arrays.testName}}
@@ -322,7 +308,8 @@ jobs:
             sleep 10
             kubectl apply -f ./gpuBurner.yaml
           else
-            terraform destroy -auto-approve && exit 1
+            echo "Terraform apply failed. Cluster left running for investigation."
+            exit 1
           fi
 
       - name: Run Go tests with retry
@@ -347,18 +334,3 @@ jobs:
               echo "Tests failed"
               exit 1
             fi
-
-      - name: Terraform destroy
-        if: always()
-        uses: nick-fields/retry@v2
-        with:
-          max_attempts: 1
-          timeout_minutes: 8
-          retry_wait_seconds: 5
-          command: |
-            if [ "${{ matrix.arrays.terraform_dir }}" != "" ]; then
-              cd "${{ matrix.arrays.terraform_dir }}"
-            else
-              cd terraform/eks/addon/gpu
-            fi
-            terraform destroy -auto-approve
